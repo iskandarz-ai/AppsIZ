@@ -8,23 +8,33 @@ import os
 # --- KONFIGURASI CLOUD ---
 st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
-# Koneksi ke Google Sheets (Otomatis baca dari Secrets)
+# LINK SPREADSHEET (Tetap ditaruh di sini sebagai cadangan jika Secrets telat baca)
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6Hyj2AyJ-rW-Mm790/edit?usp=sharing"
+
+# Koneksi ke Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data_sheets(tab_name):
-    # Kita tidak pakai URL_SHEETS lagi, tapi langsung panggil koneksi gsheets
-    return conn.read(worksheet=tab_name, ttl=0)
+    # Kita panggil langsung URL-nya di sini Bos biar gak Redirect (302)
+    return conn.read(spreadsheet=SHEET_URL, worksheet=tab_name, ttl=0)
 
 def save_to_sheets(df, tab_name):
-    conn.update(worksheet=tab_name, data=df)
+    conn.update(spreadsheet=SHEET_URL, worksheet=tab_name, data=df)
     st.cache_data.clear()
 
 # --- INISIALISASI DATABASE ---
 if 'users_db' not in st.session_state:
-    st.session_state.users_db = load_data_sheets("users")
+    try:
+        st.session_state.users_db = load_data_sheets("users")
+    except:
+        st.error("Gagal ambil data Users. Cek izin Share di Google Sheets, Bos!")
+        st.stop()
 
 if 'db' not in st.session_state:
-    st.session_state.db = load_data_sheets("data_parkir")
+    try:
+        st.session_state.db = load_data_sheets("data_parkir")
+    except:
+        st.session_state.db = pd.DataFrame(columns=['NOPOL', 'JENIS', 'MASUK', 'KELUAR', 'PETUGAS', 'STATUS'])
 
 # --- LOGIN LOGIC ---
 if 'logged_in' not in st.session_state:
@@ -37,7 +47,6 @@ if not st.session_state.logged_in:
         u = st.text_input("Username")
         p = st.text_input("Password", type="password")
         if st.form_submit_button("Login"):
-            # Paksa string agar format angka 6579 di Sheets tidak error
             user_match = st.session_state.users_db[
                 (st.session_state.users_db['username'].astype(str) == str(u)) & 
                 (st.session_state.users_db['password'].astype(str) == str(p))
@@ -50,7 +59,7 @@ if not st.session_state.logged_in:
                 st.error("Username atau Password salah, Bos!")
     st.stop()
 
-# --- STYLE & BACKGROUND ---
+# --- STYLE & DESIGN ---
 def set_design():
     path_bg = "static/background.jpg" 
     if os.path.exists(path_bg):
@@ -71,13 +80,12 @@ def set_design():
 
 set_design()
 
-# --- NAVIGASI ---
+# --- NAVIGASI & MENU ---
 st.title(f"🚗 🏍️ Apps Parking - Halo, {st.session_state.user}")
 menu = ["📥 MASUK (IN)", "🏠 DI DALAM AREA", "📊 HISTORY DATA"]
 if st.session_state.user == "IZ": menu.append("👤 CREATE USER")
 tab_choice = st.sidebar.radio("Navigasi Menu", menu)
 
-# --- LOGIC SETIAP MENU ---
 if tab_choice == "📥 MASUK (IN)":
     st.subheader("Input Kendaraan")
     nopol = st.text_input("NOMOR POLISI").upper()
@@ -108,12 +116,12 @@ elif tab_choice == "📊 HISTORY DATA":
     st.subheader("Semua Data Record")
     st.dataframe(st.session_state.db.sort_index(ascending=False), use_container_width=True)
     csv = st.session_state.db.to_csv(index=False).encode('utf-8')
-    st.download_button("Download Laporan Excel (CSV)", data=csv, file_name=f"Report_Parkir_{datetime.now().strftime('%Y%m%d')}.csv")
+    st.download_button("Download CSV", data=csv, file_name=f"Report_{datetime.now().strftime('%Y%m%d')}.csv")
 
 elif tab_choice == "👤 CREATE USER":
     st.subheader("Tambah Petugas")
-    new_u = st.text_input("Username Baru")
-    new_p = st.text_input("Password Baru")
+    new_u = st.text_input("Username")
+    new_p = st.text_input("Password")
     if st.button("Simpan User"):
         if new_u and new_p:
             new_user = pd.DataFrame([{'username': new_u, 'password': new_p, 'role': 'staff'}])
