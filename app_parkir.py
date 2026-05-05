@@ -13,8 +13,13 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Ganti fungsi load_data_sheets Bos di GitHub menjadi ini:
 def load_data_sheets(tab_name):
-    # Langsung baca dari koneksi tanpa sebut URL lagi
-    return conn.read(worksheet=tab_name, ttl=0)
+    # Kita tambahkan parameter spreadsheet secara eksplisit dari Secrets
+    # supaya Streamlit tidak bingung mencari file-nya
+    return conn.read(
+        spreadsheet=st.secrets["connections"]["gsheets"]["spreadsheet"],
+        worksheet=tab_name,
+        ttl=0
+    )
 
 def save_to_sheets(df, tab_name):
     # Langsung update ke koneksi tanpa sebut URL lagi
