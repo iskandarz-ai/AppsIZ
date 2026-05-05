@@ -9,7 +9,7 @@ import os
 st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
 # LINK SPREADSHEET BOS SUDAH SAYA MASUKKAN
-URL_SHEETS = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6Hyj2AyJ-rW-Mm790/edit?usp=sharing"
+URL_SHEETS = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6Hyj2AyJ-rW-Mm790/export?format=csv"
 
 # Koneksi ke Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
