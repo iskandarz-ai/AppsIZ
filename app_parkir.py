@@ -8,23 +8,18 @@ import os
 # --- KONFIGURASI CLOUD ---
 st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
-# --- KONFIGURASI CLOUD ---
-st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
-
 # Koneksi ke Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Fungsi Load Data yang lebih kuat
 def load_data_sheets(tab_name):
-    # Ambil link langsung dari secrets agar sinkron
+    # Mengambil link spreadsheet langsung dari Secrets agar sinkron
     url = st.secrets["connections"]["gsheets"]["spreadsheet"]
     return conn.read(spreadsheet=url, worksheet=tab_name, ttl=0)
 
-# Fungsi Save Data agar history lama tidak hilang
 def save_to_sheets(df, tab_name):
     url = st.secrets["connections"]["gsheets"]["spreadsheet"]
     conn.update(spreadsheet=url, worksheet=tab_name, data=df)
-    # Hapus cache total agar data terbaru langsung muncul di semua tab
+    st.cache_data.clear() # Hapus cache agar history lama langsung muncul
     st.cache_data.clear()
 
 # --- INISIALISASI DATABASE ---
