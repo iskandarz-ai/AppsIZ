@@ -8,35 +8,39 @@ import os
 # --- KONFIGURASI CLOUD ---
 st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
+# --- KONFIGURASI CLOUD ---
+st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
+
 # Koneksi ke Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Ganti fungsi load_data_sheets Bos di GitHub menjadi ini:
+# Fungsi Load Data yang lebih kuat
 def load_data_sheets(tab_name):
-    # Kita tambahkan parameter spreadsheet secara eksplisit dari Secrets
-    # supaya Streamlit tidak bingung mencari file-nya
-    return conn.read(
-        spreadsheet=st.secrets["connections"]["gsheets"]["spreadsheet"],
-        worksheet=tab_name,
-        ttl=0
-    )
+    # Ambil link langsung dari secrets agar sinkron
+    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    return conn.read(spreadsheet=url, worksheet=tab_name, ttl=0)
 
+# Fungsi Save Data agar history lama tidak hilang
 def save_to_sheets(df, tab_name):
-    # Langsung update ke koneksi tanpa sebut URL lagi
-    conn.update(worksheet=tab_name, data=df)
+    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    conn.update(spreadsheet=url, worksheet=tab_name, data=df)
+    # Hapus cache total agar data terbaru langsung muncul di semua tab
     st.cache_data.clear()
+
 # --- INISIALISASI DATABASE ---
 if 'users_db' not in st.session_state:
     try:
         st.session_state.users_db = load_data_sheets("users")
-    except:
+    except Exception as e:
         st.error("Gagal ambil data Users. Cek izin Share di Google Sheets, Bos!")
         st.stop()
 
 if 'db' not in st.session_state:
     try:
+        # Load history data parkir
         st.session_state.db = load_data_sheets("data_parkir")
-    except:
+    except Exception as e:
+        # Jika gagal/kosong, buat dataframe baru agar aplikasi tidak crash
         st.session_state.db = pd.DataFrame(columns=['NOPOL', 'JENIS', 'MASUK', 'KELUAR', 'PETUGAS', 'STATUS'])
 
 # --- LOGIN LOGIC ---
