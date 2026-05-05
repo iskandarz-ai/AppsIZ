@@ -14,9 +14,14 @@ SHEET_URL = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6
 # Koneksi ke Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# Ganti fungsi load_data_sheets Bos di GitHub menjadi ini:
 def load_data_sheets(tab_name):
-    # Dia akan otomatis ambil link dari Secrets Bos
-    return conn.read(worksheet=tab_name, ttl=0)
+    try:
+        # Kita paksa ambil data dengan ttl=0 agar tidak pakai cache lama
+        return conn.read(spreadsheet=SHEET_URL, worksheet=tab_name, ttl=0)
+    except Exception as e:
+        st.warning(f"Koneksi sedang sibuk, mencoba ulang... ({tab_name})")
+        return conn.read(spreadsheet=SHEET_URL, worksheet=tab_name, ttl=1)    
 
 def save_to_sheets(df, tab_name):
     conn.update(spreadsheet=SHEET_URL, worksheet=tab_name, data=df)
