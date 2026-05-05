@@ -44,8 +44,11 @@ def login_ui():
         u = st.text_input("Username")
         p = st.text_input("Password", type="password")
         if st.form_submit_button("Login"):
-            user_match = st.session_state.users_db[(st.session_state.users_db['username'] == u) & 
-                                                  (st.session_state.users_db['password'] == p)]
+            # Kita paksa kedua sisi (DB dan Input) menjadi String (tulisan) agar sinkron
+            user_match = st.session_state.users_db[
+                (st.session_state.users_db['username'].astype(str) == str(u)) & 
+                (st.session_state.users_db['password'].astype(str) == str(p))
+            ]
             if not user_match.empty:
                 st.session_state.logged_in = True
                 st.session_state.user = u
