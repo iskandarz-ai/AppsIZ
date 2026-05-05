@@ -8,25 +8,18 @@ import os
 # --- KONFIGURASI CLOUD ---
 st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
-# LINK SPREADSHEET (Tetap ditaruh di sini sebagai cadangan jika Secrets telat baca)
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6Hyj2AyJ-rW-Mm790/edit?usp=sharing"
-
 # Koneksi ke Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Ganti fungsi load_data_sheets Bos di GitHub menjadi ini:
 def load_data_sheets(tab_name):
-    try:
-        # Kita paksa ambil data dengan ttl=0 agar tidak pakai cache lama
-        return conn.read(spreadsheet=SHEET_URL, worksheet=tab_name, ttl=0)
-    except Exception as e:
-        st.warning(f"Koneksi sedang sibuk, mencoba ulang... ({tab_name})")
-        return conn.read(spreadsheet=SHEET_URL, worksheet=tab_name, ttl=1)    
+    # Langsung baca dari koneksi tanpa sebut URL lagi
+    return conn.read(worksheet=tab_name, ttl=0)
 
 def save_to_sheets(df, tab_name):
-    conn.update(spreadsheet=SHEET_URL, worksheet=tab_name, data=df)
+    # Langsung update ke koneksi tanpa sebut URL lagi
+    conn.update(worksheet=tab_name, data=df)
     st.cache_data.clear()
-
 # --- INISIALISASI DATABASE ---
 if 'users_db' not in st.session_state:
     try:
