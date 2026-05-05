@@ -8,13 +8,14 @@ import os
 # --- KONFIGURASI CLOUD ---
 st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
-# GANTI LINK DI BAWAH INI DENGAN LINK GOOGLE SHEETS BOS
-URL_SHEETS = "LINK_GOOGLE_SHEETS_BOS_YANG_ADA_DATA_TOHID_DKK"
+# LINK SPREADSHEET BOS SUDAH SAYA MASUKKAN
+URL_SHEETS = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6Hyj2AyJ-rW-Mm790/edit?usp=sharing"
 
 # Koneksi ke Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data_sheets(tab_name):
+    # ttl=0 agar data selalu fresh dari Google Sheets
     return conn.read(spreadsheet=URL_SHEETS, worksheet=tab_name, ttl=0)
 
 def save_to_sheets(df, tab_name):
@@ -39,6 +40,7 @@ if not st.session_state.logged_in:
         u = st.text_input("Username")
         p = st.text_input("Password", type="password")
         if st.form_submit_button("Login"):
+            # Paksa string agar format angka 6579 di Sheets tidak error
             user_match = st.session_state.users_db[
                 (st.session_state.users_db['username'].astype(str) == str(u)) & 
                 (st.session_state.users_db['password'].astype(str) == str(p))
