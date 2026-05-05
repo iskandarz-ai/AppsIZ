@@ -1,50 +1,46 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 import base64
 import os
 
-# Konfigurasi Halaman & Path
-st.set_page_config(page_title="Parking System", layout="centered")
-DB_FILE = r'D:\THD\data_parkir.csv'
-USER_FILE = r'D:\THD\users.csv'
+# --- KONFIGURASI CLOUD ---
+st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
-# --- FUNGSI DATABASE ---
-def load_data(file, columns):
-    if os.path.exists(file):
-        try:
-            return pd.read_csv(file)
-        except:
-            return pd.DataFrame(columns=columns)
-    return pd.DataFrame(columns=columns)
+# MASUKKAN LINK GOOGLE SHEETS BOS DI SINI
+URL_SHEETS = "LINK_GOOGLE_SHEETS_BOS_YANG_ADA_DATA_TOHID_DKK"
 
-def save_data(df, file):
-    df.to_csv(file, index=False)
+# Koneksi ke Google Sheets
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Inisialisasi Database
+def load_data_sheets(tab_name):
+    # ttl=0 agar setiap refresh selalu tarik data terbaru dari Google Sheets
+    return conn.read(spreadsheet=URL_SHEETS, worksheet=tab_name, ttl=0)
+
+def save_to_sheets(df, tab_name):
+    conn.update(spreadsheet=URL_SHEETS, worksheet=tab_name, data=df)
+    st.cache_data.clear()
+
+# --- INISIALISASI DATABASE (Sistem Baru) ---
 if 'users_db' not in st.session_state:
-    users = load_data(USER_FILE, ['username', 'password', 'role'])
-    if users.empty:
-        users = pd.DataFrame([{'username': 'IZ', 'password': '6579', 'role': 'admin'}])
-        save_data(users, USER_FILE)
-    st.session_state.users_db = users
+    st.session_state.users_db = load_data_sheets("users")
 
 if 'db' not in st.session_state:
-    # Memastikan history lama dari CSV langsung ditarik saat startup
-    st.session_state.db = load_data(DB_FILE, ['NOPOL', 'JENIS', 'MASUK', 'KELUAR', 'PETUGAS', 'STATUS'])
+    st.session_state.db = load_data_sheets("data_parkir")
 
 # --- LOGIN LOGIC ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user = None
 
-def login_ui():
+if not st.session_state.logged_in:
     st.title("🔐 Login Parking")
     with st.form("login_form"):
         u = st.text_input("Username")
         p = st.text_input("Password", type="password")
         if st.form_submit_button("Login"):
-            # Kita paksa kedua sisi (DB dan Input) menjadi String (tulisan) agar sinkron
+            # Paksa string agar format angka 6579 di Sheets tidak error
             user_match = st.session_state.users_db[
                 (st.session_state.users_db['username'].astype(str) == str(u)) & 
                 (st.session_state.users_db['password'].astype(str) == str(p))
@@ -55,134 +51,55 @@ def login_ui():
                 st.rerun()
             else:
                 st.error("Username atau Password salah, Bos!")
-
-if not st.session_state.logged_in:
-    login_ui()
     st.stop()
 
-# --- STYLE & FOOTER ---
-def set_bg_and_style():
-    # Style dengan warna Biru Tua (Navy) dan Efek Marquee
-    footer_style = """
-        <style>
-        .stTabs, [data-testid="stExpander"], .stAlert, .stDataFrame { 
-            background-color: rgba(255, 255, 255, 0.9) !important; 
-            border: 2px solid #000080; 
-            border-radius: 10px; 
-        }
-        
-        /* Tulisan Biru Tua Solid (Navy) - Tajam & Bold */
-        h1, h2, h3, p, label, .stMarkdown { 
-            color: #000080 !important; 
-            text-shadow: none !important;
-            font-weight: bold !important;
-        }
-        
-        /* CSS Khusus Footer dengan Animasi Marquee */
-        .footer { 
-            position: fixed; 
-            left: 0; 
-            bottom: 0; 
-            width: 100%; 
-            background-color: #000080; 
-            color: white; 
-            padding: 8px 0; 
-            z-index: 9999;
-            font-family: Arial, sans-serif;
-            overflow: hidden; /* Sembunyikan teks yang keluar batas */
-        }
-        
-        .marquee-text {
-            display: inline-block;
-            white-space: nowrap;
-            animation: marquee 15s linear infinite;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        @keyframes marquee {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-        }
-
-        /* Ruang kosong di bawah agar konten utama tidak tertutup footer */
-        .main-content { margin-bottom: 60px; }
-        </style>
-        
-        <div class="footer">
-            <div class="marquee-text">
-                🚨 Selalu Profesional dan Tingkatkan Keamanan — Created by IZ @ 2026 🚨
-            </div>
-        </div>
-    """
-    
-    # Bagian Background
-    path_bg = r'D:\THD\static\background.jpg' 
+# --- STYLE & BACKGROUND (Path diperbaiki) ---
+def set_design():
+    # Gunakan path relatif untuk GitHub
+    path_bg = "static/background.jpg" 
     if os.path.exists(path_bg):
         with open(path_bg, "rb") as img:
             enc = base64.b64encode(img.read()).decode()
-        bg_style = f"""
-            <style>
-            .stApp {{ 
-                background-image: url("data:image/png;base64,{enc}"); 
-                background-size: cover; 
-                background-attachment: fixed; 
-            }}
-            </style>
-        """
-        st.markdown(bg_style, unsafe_allow_html=True) 
+        st.markdown(f"""<style>.stApp {{ background-image: url("data:image/png;base64,{enc}"); background-size: cover; background-attachment: fixed; }}</style>""", unsafe_allow_html=True)
     
-    st.markdown(footer_style, unsafe_allow_html=True) 
+    # CSS Marquee & Biru Tua
+    st.markdown("""
+        <style>
+        .stTabs, [data-testid="stExpander"], .stAlert, .stDataFrame { background-color: rgba(255, 255, 255, 0.9) !important; border: 2px solid #000080; border-radius: 10px; }
+        h1, h2, h3, p, label, .stMarkdown { color: #000080 !important; font-weight: bold !important; text-shadow: none !important; }
+        .footer { position: fixed; left: 0; bottom: 0; width: 100%; background-color: #000080; color: white; padding: 8px 0; z-index: 9999; overflow: hidden; }
+        .marquee-text { display: inline-block; white-space: nowrap; animation: marquee 15s linear infinite; font-size: 16px; font-weight: bold; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        </style>
+        <div class="footer"><div class="marquee-text">🚨 Selalu Profesional dan Tingkatkan Keamanan — Created by IZ @ 2026 🚨</div></div>
+    """, unsafe_allow_html=True)
 
-set_bg_and_style()
+set_design()
 
-# --- UI UTAMA & NAVIGASI ---
+# --- NAVIGASI ---
 st.title(f"🚗 🏍️ Apps Parking - Halo, {st.session_state.user}")
-
-# Tambah Menu History agar terlihat jelas
 menu = ["📥 MASUK (IN)", "🏠 DI DALAM AREA", "📊 HISTORY DATA"]
-if st.session_state.user == "IZ":
-    menu.append("👤 CREATE USER")
-
+if st.session_state.user == "IZ": menu.append("👤 CREATE USER")
 tab_choice = st.sidebar.radio("Navigasi Menu", menu)
 
-# --- LOGIC SETIAP MENU ---
-
+# --- LOGIC MASUK ---
 if tab_choice == "📥 MASUK (IN)":
     st.subheader("Input Kendaraan")
-    nopol = st.text_input("NOMOR POLISI", placeholder="Ketik Nopol...").upper()
+    nopol = st.text_input("NOMOR POLISI").upper()
     jenis = st.selectbox("JENIS:", ["MOBIL PRIBADI", "SEPEDA MOTOR", "MOBIL BARANG"])
     if st.button("PROSES MASUK (IN)"):
         if nopol:
             jam = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            new_entry = {'NOPOL': nopol, 'JENIS': jenis, 'MASUK': jam, 'KELUAR': '-', 'PETUGAS': st.session_state.user, 'STATUS': 'DI DALAM'}
-            st.session_state.db = pd.concat([st.session_state.db, pd.DataFrame([new_entry])], ignore_index=True)
-            save_data(st.session_state.db, DB_FILE) # Simpan otomatis ke CSV
-            st.success(f"✅ {nopol} masuk jam {jam}")
+            new_entry = pd.DataFrame([{'NOPOL': nopol, 'JENIS': jenis, 'MASUK': jam, 'KELUAR': '-', 'PETUGAS': st.session_state.user, 'STATUS': 'DI DALAM'}])
+            st.session_state.db = pd.concat([st.session_state.db, new_entry], ignore_index=True)
+            save_to_sheets(st.session_state.db, "data_parkir")
+            st.success(f"✅ {nopol} Masuk!")
 
-elif tab_choice == "🏠 DI DALAM AREA":
-    st.subheader("Unit Masih Terparkir")
-    df_aktif = st.session_state.db[st.session_state.db['STATUS'] == 'DI DALAM']
-    if df_aktif.empty:
-        st.info("Area kosong, tidak ada kendaraan di dalam.")
-    else:
-        for idx, row in df_aktif.iterrows():
-            with st.expander(f"📌 {row['NOPOL']} ({row['JENIS']})"):
-                st.write(f"Masuk: {row['MASUK']} | Petugas: {row['PETUGAS']}")
-                if st.button(f"KLIK OUT - {row['NOPOL']}", key=f"o_{idx}"):
-                    jam_out = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    st.session_state.db.at[idx, 'KELUAR'] = jam_out
-                    st.session_state.db.at[idx, 'STATUS'] = 'KELUAR'
-                    save_data(st.session_state.db, DB_FILE) # Update CSV saat keluar
-                    st.rerun()
-
+# --- LOGIC HISTORY ---
 elif tab_choice == "📊 HISTORY DATA":
     st.subheader("Semua Data Record")
-    if st.session_state.db.empty:
-        st.info("Belum ada record data.")
-    else:
-        # Tampilkan history dalam bentuk tabel yang bisa di-scroll
-        st.dataframe(st.session_state.db.sort_index(ascending=False), use_container_width=True)
+    # Urutkan dari yang terbaru (paling atas)
+    st.dataframe(st.session_state.db.sort_index(ascending=False), use_container_width=True)
         
         # Tombol Download khusus untuk laporan
         csv = st.session_state.db.to_csv(index=False).encode('utf-8')
