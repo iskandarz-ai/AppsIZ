@@ -15,8 +15,8 @@ SHEET_URL = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data_sheets(tab_name):
-    # Kita panggil langsung URL-nya di sini Bos biar gak Redirect (302)
-    return conn.read(spreadsheet=SHEET_URL, worksheet=tab_name, ttl=0)
+    # Dia akan otomatis ambil link dari Secrets Bos
+    return conn.read(worksheet=tab_name, ttl=0)
 
 def save_to_sheets(df, tab_name):
     conn.update(spreadsheet=SHEET_URL, worksheet=tab_name, data=df)
