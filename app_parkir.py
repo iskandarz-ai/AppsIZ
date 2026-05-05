@@ -8,18 +8,15 @@ import os
 # --- KONFIGURASI CLOUD ---
 st.set_page_config(page_title="IZ Parking Cloud", layout="centered")
 
-# LINK SPREADSHEET BOS SUDAH SAYA MASUKKAN
-URL_SHEETS = "https://docs.google.com/spreadsheets/d/1q5T6BX8aJoaWNzWeG8ICqyAmjN6Hyj2AyJ-rW-Mm790/edit?usp=sharing"
-
-# Koneksi ke Google Sheets
+# Koneksi ke Google Sheets (Otomatis baca dari Secrets)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data_sheets(tab_name):
-    # ttl=0 agar data selalu fresh dari Google Sheets
-    return conn.read(spreadsheet=URL_SHEETS, worksheet=tab_name, ttl=0)
+    # Kita tidak pakai URL_SHEETS lagi, tapi langsung panggil koneksi gsheets
+    return conn.read(worksheet=tab_name, ttl=0)
 
 def save_to_sheets(df, tab_name):
-    conn.update(spreadsheet=URL_SHEETS, worksheet=tab_name, data=df)
+    conn.update(worksheet=tab_name, data=df)
     st.cache_data.clear()
 
 # --- INISIALISASI DATABASE ---
